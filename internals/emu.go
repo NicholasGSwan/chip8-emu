@@ -1,7 +1,12 @@
-package main
+package emu
 
-type emuMemory struct {
-	memory         [4096]byte
+import (
+	"fmt"
+	"time"
+)
+
+type EmuMemory struct {
+	Memory         [4096]byte
 	programCounter int
 	indexRegister  int
 	stack          []int
@@ -11,7 +16,7 @@ type emuMemory struct {
 }
 
 var (
-	font = []byte{0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+	Font = []byte{0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 		0x20, 0x60, 0x20, 0x20, 0x70, // 1
 		0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
 		0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
@@ -28,3 +33,21 @@ var (
 		0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
 		0xF0, 0x80, 0xF0, 0x80, 0x80}
 )
+
+func (mem *EmuMemory) Init(font []byte) {
+	for i, b := range font {
+		mem.Memory[i] = b
+	}
+}
+
+func (mem *EmuMemory) Decrement() {
+	for mem.delayTimer > 0 {
+		time.Sleep(time.Microsecond * 16666)
+		mem.delayTimer--
+		fmt.Printf("delay timer is now %d \n", mem.delayTimer)
+	}
+}
+
+func (mem *EmuMemory) SetDelayTimer(time uint8) {
+	mem.delayTimer = time
+}
