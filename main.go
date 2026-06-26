@@ -14,6 +14,13 @@ func main() {
 	for i := range len(emu.Font) {
 		fmt.Printf("The val at %d is %v \n", i, emuMem.Memory[i])
 	}
-	emuMem.SetDelayTimer(200)
-	emuMem.Decrement()
+	// emuMem.SetDelayTimer(200)
+	// emuMem.Decrement()
+
+	op1 := 0x01
+	op2 := byte(0x00)
+	for op1 <= 0xf1 {
+		emuMem.Decode(byte(op1), op2)
+		op1 += 0x10
+	}
 }
