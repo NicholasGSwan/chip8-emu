@@ -17,10 +17,14 @@ func main() {
 	// emuMem.SetDelayTimer(200)
 	// emuMem.Decrement()
 
-	op1 := 0x01
-	op2 := byte(0x00)
-	for op1 <= 0xf1 {
-		emuMem.Decode(byte(op1), op2)
-		op1 += 0x10
-	}
+	// for op1 <= 0xf1 {
+	// 	emuMem.Decode()
+	// 	op1 += 0x10
+	// }
+	emuMem.Memory[500] = 0x00
+	emuMem.Memory[501] = 0xe0
+	opcode := emuMem.Fetch()
+	emu.PrintOpCode(opcode)
+	// fmt.Printf("opcode values are : %x %x %x %x\n", opcode.opval, opcode[1], opcode[2], opcode[3])
+	emuMem.Decode(opcode)
 }
