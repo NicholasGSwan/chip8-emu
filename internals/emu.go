@@ -7,6 +7,7 @@ import (
 
 type EmuMemory struct {
 	Memory         [4096]byte
+	display        [32][64]bool
 	programCounter uint16
 	indexRegister  uint16
 	stack          []uint16
@@ -58,6 +59,7 @@ func (mem *EmuMemory) FetchAt(memAddr uint16) opCode {
 	return opcode
 }
 
+// Fetches the opcode at the PC, then increments it to the next position
 func (mem *EmuMemory) Fetch() opCode {
 	opcode := mem.FetchAt(mem.programCounter)
 	mem.incrementPc()
@@ -68,6 +70,7 @@ func (mem *EmuMemory) incrementPc() {
 	mem.programCounter += 2
 }
 
+// decode the various opcodes and execute
 func (mem *EmuMemory) Decode(opcode opCode) {
 
 	// nib2 := op1 & 0x0F
@@ -152,6 +155,12 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		fmt.Println("12")
 	case 0xd0:
 		fmt.Println("13")
+		// bitwise AND behaves the same as modulo for powers of 2 apparently
+		x := mem.varRegister[opcode.nib2] & 63
+		y := mem.varRegister[opcode.nib3] & 31
+		spriteData := mem.Memory[mem.indexRegister : mem.indexRegister+uint16(opcode.nib4)]
+		mem.drawDisplay(x, y, spriteData)
+
 		//display/draw
 	case 0xe0:
 		fmt.Println("14")
@@ -159,6 +168,26 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		fmt.Println("15")
 	default:
 		fmt.Println("oopsie poopsie, decode didn't work")
+	}
+}
+
+func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
+	mem.varRegister[0xf] = 0
+
+	for i := 0; int(y)+i < 32; i++ {
+		bRow := spriteData[i]
+		xb := x
+		for xb < 64 && xb < x+8 {
+			if (bRow & (1<<xb - x)) != 0 {
+				if mem.display[int(y)+i][xb] {
+					mem.display[int(y)+i][xb] = false
+					mem.varRegister[0xf] = 1
+				} else {
+					mem.display[int(y)+i][xb] = true
+				}
+			}
+			xb++
+		}
 	}
 }
 
