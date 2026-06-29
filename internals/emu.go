@@ -177,8 +177,9 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 	for i := 0; int(y)+i < 32; i++ {
 		bRow := spriteData[i]
 		xb := x
+		bs := 7
 		for xb < 64 && xb < x+8 {
-			if (bRow & (1<<xb - x)) != 0 {
+			if (bRow & (1 << bs)) != 0 {
 				if mem.display[int(y)+i][xb] {
 					mem.display[int(y)+i][xb] = false
 					mem.varRegister[0xf] = 1
@@ -186,6 +187,7 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 					mem.display[int(y)+i][xb] = true
 				}
 			}
+			bs--
 			xb++
 		}
 	}
