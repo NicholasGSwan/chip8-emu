@@ -2,6 +2,8 @@ package emu
 
 import (
 	"fmt"
+	"os"
+
 	"time"
 )
 
@@ -25,6 +27,10 @@ type opCode struct {
 	twoVal   byte
 }
 
+const (
+	pcStartPoint = 512
+)
+
 var (
 	Font = []byte{0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 		0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -47,7 +53,23 @@ var (
 func (mem *EmuMemory) Init(font []byte) {
 	copy(mem.Memory[:], font)
 	//mem.stack = make([]uint16, 0)
-	mem.programCounter = 500
+	mem.programCounter = pcStartPoint
+}
+
+func (mem *EmuMemory) LoadRom(filepath string) {
+	file, err := os.Open(filepath)
+
+	if err != nil {
+		fmt.Printf("Could not open file: %s\n", err.Error())
+	} else {
+		numBytes, err := file.Read(mem.Memory[512:])
+		if err != nil {
+			fmt.Printf("Could not load rom into memory: %s\n", err.Error())
+		}
+
+		fmt.Printf("Number of bytes loaded: %d\n", numBytes)
+	}
+	fmt.Println("Rom loaded!")
 }
 
 func (mem *EmuMemory) FetchAt(memAddr uint16) opCode {
@@ -86,43 +108,47 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		}
 
 		fmt.Println("0")
-	case 0x10:
+	case 0x1:
 		//jump to threeval
+		fmt.Printf("Program counter is: %d and three val is : %d\n", mem.programCounter, opcode.threeVal)
+		if mem.programCounter-2 == opcode.threeVal {
+			os.Exit(0)
+		}
 		mem.programCounter = opcode.threeVal
 
 		fmt.Println("1")
-	case 0x20:
+	case 0x2:
 
 		mem.stack = append(mem.stack, mem.programCounter)
 		mem.programCounter = opcode.threeVal
 		fmt.Println("2")
 
-	case 0x30:
+	case 0x3:
 		fmt.Println("3")
 		//skip if variable register at nib2 equals twoval
 		if mem.varRegister[opcode.nib2] == opcode.twoVal {
 			mem.incrementPc()
 		}
 
-	case 0x40:
+	case 0x4:
 		fmt.Println("4")
 		if mem.varRegister[opcode.nib2] != opcode.twoVal {
 			mem.incrementPc()
 		}
-	case 0x50:
+	case 0x5:
 		fmt.Println("5")
 		if mem.varRegister[opcode.nib2] == mem.varRegister[opcode.nib3] {
 			mem.incrementPc()
 		}
-	case 0x60:
+	case 0x6:
 		fmt.Println("6")
 		//set variable register at nib2 addr
 		mem.varRegister[opcode.nib2] = opcode.twoVal
-	case 0x70:
+	case 0x7:
 		fmt.Println("7")
 		//add value to variable register at nib2
 		mem.varRegister[opcode.nib2] += opcode.twoVal
-	case 0x80:
+	case 0x8:
 		fmt.Println("8")
 		switch opcode.nib4 {
 		case 0:
@@ -140,31 +166,34 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		case 7:
 			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3] - mem.varRegister[opcode.nib2]
 		}
-	case 0x90:
+	case 0x9:
 		fmt.Println("9")
 		if mem.varRegister[opcode.nib2] != mem.varRegister[opcode.nib3] {
 			mem.incrementPc()
 		}
-	case 0xA0:
+	case 0xA:
 		fmt.Println("10")
 		//set index register
 		mem.indexRegister = opcode.threeVal
-	case 0xB0:
+	case 0xB:
 		fmt.Println("11")
-	case 0xc0:
+	case 0xc:
 		fmt.Println("12")
-	case 0xd0:
+	case 0xd:
 		fmt.Println("13")
 		// bitwise AND behaves the same as modulo for powers of 2 apparently
 		x := mem.varRegister[opcode.nib2] & 63
 		y := mem.varRegister[opcode.nib3] & 31
+		fmt.Printf("x is : %d and y is : %d\n", x, y)
+		fmt.Printf("start is : %d and end is : %d\n", mem.indexRegister, mem.indexRegister+uint16(opcode.nib4))
 		spriteData := mem.Memory[mem.indexRegister : mem.indexRegister+uint16(opcode.nib4)]
+		fmt.Printf("The sprite data is %d in length\n", len(spriteData))
 		mem.drawDisplay(x, y, spriteData)
 
 		//display/draw
-	case 0xe0:
+	case 0xe:
 		fmt.Println("14")
-	case 0xf0:
+	case 0xf:
 		fmt.Println("15")
 	default:
 		fmt.Println("oopsie poopsie, decode didn't work")
@@ -174,7 +203,7 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 	mem.varRegister[0xf] = 0
 
-	for i := 0; int(y)+i < 32; i++ {
+	for i := 0; i < len(spriteData) && int(y)+i < 32; i++ {
 		bRow := spriteData[i]
 		xb := x
 		bs := 7
@@ -191,6 +220,21 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 			xb++
 		}
 	}
+	mem.printDisplay()
+}
+
+func (mem *EmuMemory) printDisplay() {
+	for y := 0; y < len(mem.display); y++ {
+		for x := 0; x < len(mem.display[0]); x++ {
+			if mem.display[y][x] {
+				fmt.Print("11")
+			} else {
+				fmt.Print("00")
+			}
+		}
+		fmt.Print("\n")
+	}
+	fmt.Print("\n\n\n")
 }
 
 func (mem *EmuMemory) Decrement() {
@@ -212,6 +256,14 @@ func (mem *EmuMemory) popStack() uint16 {
 	return retVal
 }
 
+func (opcode opCode) GetThreeval() uint16 {
+	return opcode.threeVal
+}
+
 func PrintOpCode(opcode opCode) {
 	fmt.Printf("Opcode vals are:\n opval: %x\nnib2: %x\nnib3: %x\nnib4: %x\nthreeVal: %x\ntwoVal: %x\n", opcode.opval, opcode.nib2, opcode.nib3, opcode.nib4, opcode.threeVal, opcode.twoVal)
+}
+
+func (mem EmuMemory) PrintPcCounter() {
+	fmt.Printf("Program Counter is at: %d\n", mem.programCounter)
 }

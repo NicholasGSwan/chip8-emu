@@ -21,10 +21,19 @@ func main() {
 	// 	emuMem.Decode()
 	// 	op1 += 0x10
 	// }
-	emuMem.Memory[500] = 0x00
-	emuMem.Memory[501] = 0xe0
-	opcode := emuMem.Fetch()
-	emu.PrintOpCode(opcode)
-	// fmt.Printf("opcode values are : %x %x %x %x\n", opcode.opval, opcode[1], opcode[2], opcode[3])
-	emuMem.Decode(opcode)
+	// emuMem.Memory[500] = 0x00
+	// emuMem.Memory[501] = 0xe0
+	// opcode := emuMem.Fetch()
+	// emu.PrintOpCode(opcode)
+	// // fmt.Printf("opcode values are : %x %x %x %x\n", opcode.opval, opcode[1], opcode[2], opcode[3])
+	// emuMem.Decode(opcode)
+
+	emuMem.LoadRom("IBM Logo.ch8")
+	opCode := emuMem.Fetch()
+	for opCode.GetThreeval() != 0 {
+		emu.PrintOpCode(opCode)
+		emuMem.Decode(opCode)
+		emuMem.PrintPcCounter()
+		opCode = emuMem.Fetch()
+	}
 }
