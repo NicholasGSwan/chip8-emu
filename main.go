@@ -36,4 +36,5 @@ func main() {
 		emuMem.PrintPcCounter()
 		opCode = emuMem.Fetch()
 	}
+	emu.DestroyResources()
 }

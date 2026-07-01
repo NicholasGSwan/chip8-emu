@@ -1,10 +1,12 @@
 package emu
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-
 	"time"
+
+	"github.com/NicholasGSwan/chip8-emu/internals/display"
 )
 
 type EmuMemory struct {
@@ -54,6 +56,8 @@ func (mem *EmuMemory) Init(font []byte) {
 	copy(mem.Memory[:], font)
 	//mem.stack = make([]uint16, 0)
 	mem.programCounter = pcStartPoint
+	display.Init()
+
 }
 
 func (mem *EmuMemory) LoadRom(filepath string) {
@@ -110,10 +114,10 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		fmt.Println("0")
 	case 0x1:
 		//jump to threeval
-		fmt.Printf("Program counter is: %d and three val is : %d\n", mem.programCounter, opcode.threeVal)
-		if mem.programCounter-2 == opcode.threeVal {
-			os.Exit(0)
-		}
+		// fmt.Printf("Program counter is: %d and three val is : %d\n", mem.programCounter, opcode.threeVal)
+		// if mem.programCounter-2 == opcode.threeVal {
+		// 	os.Exit(0)
+		// }
 		mem.programCounter = opcode.threeVal
 
 		fmt.Println("1")
@@ -224,17 +228,21 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 }
 
 func (mem *EmuMemory) printDisplay() {
+	display.DrawDisplay(mem.display)
 	for y := 0; y < len(mem.display); y++ {
 		for x := 0; x < len(mem.display[0]); x++ {
 			if mem.display[y][x] {
 				fmt.Print("11")
+
 			} else {
 				fmt.Print("00")
 			}
 		}
 		fmt.Print("\n")
 	}
+	bufio.NewReader(os.Stdin).ReadString('\n')
 	fmt.Print("\n\n\n")
+
 }
 
 func (mem *EmuMemory) Decrement() {
@@ -266,4 +274,8 @@ func PrintOpCode(opcode opCode) {
 
 func (mem EmuMemory) PrintPcCounter() {
 	fmt.Printf("Program Counter is at: %d\n", mem.programCounter)
+}
+
+func DestroyResources() {
+	display.DestroyResources()
 }
