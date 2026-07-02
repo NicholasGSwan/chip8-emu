@@ -9,7 +9,7 @@ import (
 var window *sdl.Window
 var rend *sdl.Renderer
 
-func Init() {
+func init() {
 	var err error
 	window, err = sdl.CreateWindow("Testing SDL2", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 64, 32, sdl.WINDOW_SHOWN)
 	if err != nil {
@@ -23,17 +23,6 @@ func Init() {
 		panic(err)
 	}
 
-	running := true
-
-	for running {
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch event.(type) {
-			case *sdl.QuitEvent:
-				running = false
-			}
-		}
-
-	}
 }
 
 func DrawDisplay(pixels [32][64]bool) {
@@ -49,6 +38,7 @@ func DrawDisplay(pixels [32][64]bool) {
 		}
 		fmt.Print("\n")
 	}
+	rend.Present()
 }
 
 func DestroyResources() {

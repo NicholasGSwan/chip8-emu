@@ -1,12 +1,12 @@
 package emu
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/NicholasGSwan/chip8-emu/internals/display"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type EmuMemory struct {
@@ -52,12 +52,32 @@ var (
 		0xF0, 0x80, 0xF0, 0x80, 0x80}
 )
 
-func (mem *EmuMemory) Init(font []byte) {
-	copy(mem.Memory[:], font)
+func (mem *EmuMemory) init() {
+	copy(mem.Memory[:], Font)
 	//mem.stack = make([]uint16, 0)
 	mem.programCounter = pcStartPoint
-	display.Init()
+	// display.init()
 
+}
+
+func (e *EmuMemory) RunEmu(filepath string) {
+
+	// e.Init()
+	running := true
+	e.LoadRom(filepath)
+
+	for running {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch event.(type) {
+			case *sdl.QuitEvent:
+				running = false
+			}
+		}
+
+		opc := e.Fetch()
+		e.Decode(opc)
+		// bufio.NewReader(os.Stdin).ReadString('\n')
+	}
 }
 
 func (mem *EmuMemory) LoadRom(filepath string) {
@@ -232,6 +252,7 @@ func (mem *EmuMemory) printDisplay() {
 	for y := 0; y < len(mem.display); y++ {
 		for x := 0; x < len(mem.display[0]); x++ {
 			if mem.display[y][x] {
+
 				fmt.Print("11")
 
 			} else {
@@ -240,7 +261,7 @@ func (mem *EmuMemory) printDisplay() {
 		}
 		fmt.Print("\n")
 	}
-	bufio.NewReader(os.Stdin).ReadString('\n')
+
 	fmt.Print("\n\n\n")
 
 }
