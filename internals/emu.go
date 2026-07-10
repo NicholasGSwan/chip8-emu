@@ -2,10 +2,12 @@ package emu
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"time"
 
 	"github.com/NicholasGSwan/chip8-emu/internals/display"
+	"github.com/NicholasGSwan/chip8-emu/internals/input"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -32,6 +34,10 @@ type opCode struct {
 const (
 	pcStartPoint = 512
 )
+
+var keybState []uint8
+var SetXtoYInShiftInstruction = true
+var kp = input.GetKeys()
 
 var (
 	Font = []byte{0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -69,6 +75,7 @@ func (e *EmuMemory) RunEmu(filepath string) {
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event.(type) {
+
 			case *sdl.QuitEvent:
 				running = false
 			}
@@ -114,6 +121,10 @@ func (mem *EmuMemory) Fetch() opCode {
 
 func (mem *EmuMemory) incrementPc() {
 	mem.programCounter += 2
+}
+
+func (mem *EmuMemory) decrementPc() {
+	mem.programCounter -= 2
 }
 
 // decode the various opcodes and execute
@@ -187,8 +198,34 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] + mem.varRegister[opcode.nib3]
 		case 5:
 			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] - mem.varRegister[opcode.nib3]
+		case 6:
+			//shift bit right and put in VF
+			if SetXtoYInShiftInstruction {
+				mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3]
+			}
+
+			if bit := 0x1 & mem.varRegister[opcode.nib2]; bit == 0x1 {
+				mem.varRegister[0xF] = 1
+			} else {
+				mem.varRegister[0xF] = 0
+			}
+
+			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] >> 1
 		case 7:
 			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3] - mem.varRegister[opcode.nib2]
+		case 0xE:
+			//shift bit left and put in VF
+			if SetXtoYInShiftInstruction {
+				mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3]
+			}
+
+			if bit := 0x8 & mem.varRegister[opcode.nib2]; bit == 0x8 {
+				mem.varRegister[0xF] = 1
+			} else {
+				mem.varRegister[0xF] = 0
+			}
+
+			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] << 1
 		}
 	case 0x9:
 		fmt.Println("9")
@@ -201,8 +238,12 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		mem.indexRegister = opcode.threeVal
 	case 0xB:
 		fmt.Println("11")
+		//jump with offset.  Has ambiguous behavior; implementing original functionality (BNNN vs BXNN)
+		mem.programCounter = uint16(mem.varRegister[0]) + opcode.threeVal
 	case 0xc:
 		fmt.Println("12")
+		//Random
+		mem.varRegister[opcode.nib2] = byte(rand.Int()) & opcode.twoVal
 	case 0xd:
 		fmt.Println("13")
 		// bitwise AND behaves the same as modulo for powers of 2 apparently
@@ -217,8 +258,25 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		//display/draw
 	case 0xe:
 		fmt.Println("14")
+		//skip instruction if key is/ is not pressed
+		keybState = sdl.GetKeyboardState()
+		isPressed := keybState[kp[mem.varRegister[opcode.nib2]]]
+
+		switch opcode.twoVal {
+		case 0x9e:
+			if isPressed == 1 {
+				mem.incrementPc()
+			}
+		case 0xa1:
+			if isPressed == 0 {
+				mem.incrementPc()
+			}
+
+		}
 	case 0xf:
 		fmt.Println("15")
+		//wait for keypress
+
 	default:
 		fmt.Println("oopsie poopsie, decode didn't work")
 	}
