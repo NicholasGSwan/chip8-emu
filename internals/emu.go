@@ -235,6 +235,7 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 	case 0xA:
 		fmt.Println("10")
 		//set index register
+		//fmt.Printf("setting index register to %d\n", opcode.threeVal)
 		mem.indexRegister = opcode.threeVal
 	case 0xB:
 		fmt.Println("11")
@@ -286,6 +287,19 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 			mem.delayTimer = mem.varRegister[opcode.nib2]
 		case 0x18:
 			mem.soundTimer = mem.varRegister[opcode.nib2]
+		case 0x33:
+			num := mem.varRegister[opcode.nib2]
+			mem.storeDigits(num)
+			//mem.getDigits()
+		case 0x55:
+			for i := 0; i <= int(opcode.nib2); i++ {
+				mem.Memory[mem.indexRegister+uint16(i)] = mem.varRegister[i]
+			}
+		case 0x65:
+			for i := 0; i <= int(opcode.nib2); i++ {
+				mem.varRegister[i] = mem.Memory[mem.indexRegister+uint16(i)]
+			}
+
 		case 0x1e:
 			//The index register I will get the value in VX added to it.
 			tmp := mem.indexRegister
@@ -322,9 +336,11 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 			xb++
 		}
 	}
-	mem.printDisplay()
+	display.DrawDisplay(mem.display)
+	// mem.printDisplay()
 }
 
+// original way I was simulating the display rendering before implementing sdl2
 func (mem *EmuMemory) printDisplay() {
 	display.DrawDisplay(mem.display)
 	for y := 0; y < len(mem.display); y++ {
@@ -373,6 +389,25 @@ func PrintOpCode(opcode opCode) {
 
 func (mem EmuMemory) PrintPcCounter() {
 	fmt.Printf("Program Counter is at: %d\n", mem.programCounter)
+}
+
+func (mem *EmuMemory) storeDigits(num byte) {
+	ir := mem.indexRegister + 2
+	fmt.Printf("preparing to store %d into memory\n", num)
+
+	for i := 0; i < 3; i++ {
+		fmt.Printf("Putting %d into memory addr %d\n", num%10, ir)
+		mem.Memory[ir] = num % 10
+		ir--
+		num = num / 10
+	}
+}
+func (mem *EmuMemory) getDigits() {
+	fmt.Print("The digits just stored are ")
+	for i := 0; i < 3; i++ {
+		fmt.Printf("%d", mem.Memory[mem.indexRegister+uint16(i)])
+	}
+	fmt.Print("\n")
 }
 
 func DestroyResources() {

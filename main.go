@@ -11,8 +11,8 @@ func main() {
 	emuMem := new(emu.EmuMemory)
 
 	// emuMem.RunEmu("IBM Logo.ch8")
-	//emuMem.RunEmu("test_opcode.ch8")
-	emuMem.RunEmu("test_opcode2.ch8")
+	emuMem.RunEmu("test_opcode.ch8")
+	// emuMem.RunEmu("test_opcode2.ch8")
 	// emuMem.RunEmu("TETRIS.ch8")
 	// emuMem.RunEmu("BC_test.ch8")
 	// emuMem.RunEmu("test.ch8")

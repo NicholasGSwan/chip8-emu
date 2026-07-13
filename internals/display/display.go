@@ -44,12 +44,39 @@ func DrawDisplay(pixels [32][64]bool) {
 				//rend.DrawPoint(int32(x), int32(y))
 
 			} else {
-				fmt.Print("00")
+				// fmt.Print("00")
 			}
 		}
-		fmt.Print("\n")
+		// fmt.Print("\n")
 	}
 	rend.DrawPoints(points)
+	rend.Present()
+}
+
+// brought this version back just to see if it rendered things any differently
+func DrawDisplaypoints(pixels [32][64]bool) {
+	//points := make([]sdl.Point, 0)
+	for y := 0; y < len(pixels); y++ {
+		for x := 0; x < len(pixels[0]); x++ {
+			if pixels[y][x] {
+				rend.SetDrawColor(255, 255, 255, 255)
+				xDraw := x * int(scale)
+				yDraw := y * int(scale)
+				for i := 0; i < int(scale); i++ {
+					for j := 0; j < int(scale); j++ {
+
+						rend.DrawPoint(int32(xDraw+i), int32(yDraw+j))
+					}
+				}
+				//rend.DrawPoint(int32(x), int32(y))
+
+			} else {
+				// fmt.Print("00")
+			}
+		}
+		// fmt.Print("\n")
+	}
+	//rend.DrawPoints(points)
 	rend.Present()
 }
 
