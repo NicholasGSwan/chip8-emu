@@ -151,7 +151,7 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		// }
 		mem.programCounter = opcode.threeVal
 
-		fmt.Println("1")
+		//fmt.Println("1")
 	case 0x2:
 
 		mem.stack = append(mem.stack, mem.programCounter)
@@ -276,6 +276,26 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 	case 0xf:
 		fmt.Println("15")
 		//wait for keypress
+
+		switch opcode.twoVal {
+		case 0x07:
+			//sets VX to the current value of the delay timer
+			mem.varRegister[opcode.nib2] = mem.delayTimer
+		case 0x15:
+			//sets the delay timer to the value in VX
+			mem.delayTimer = mem.varRegister[opcode.nib2]
+		case 0x18:
+			mem.soundTimer = mem.varRegister[opcode.nib2]
+		case 0x1e:
+			//The index register I will get the value in VX added to it.
+			tmp := mem.indexRegister
+			mem.indexRegister += uint16(mem.varRegister[opcode.nib2])
+			if mem.indexRegister < tmp {
+				mem.varRegister[0xf] = 1
+			}
+		case 0x0a:
+
+		}
 
 	default:
 		fmt.Println("oopsie poopsie, decode didn't work")

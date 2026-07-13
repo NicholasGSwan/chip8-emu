@@ -28,7 +28,7 @@ func init() {
 }
 
 func DrawDisplay(pixels [32][64]bool) {
-	points := make([]sdl.Point, 0, 0)
+	points := make([]sdl.Point, 0)
 	for y := 0; y < len(pixels); y++ {
 		for x := 0; x < len(pixels[0]); x++ {
 			if pixels[y][x] {
