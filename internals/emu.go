@@ -17,8 +17,8 @@ type EmuMemory struct {
 	programCounter uint16
 	indexRegister  uint16
 	stack          []uint16
-	delayTimer     uint8
-	soundTimer     uint8
+	delayTimer     timer
+	soundTimer     timer
 	varRegister    [16]byte
 }
 
@@ -31,13 +31,15 @@ type opCode struct {
 	twoVal   byte
 }
 
+type timer uint8
+
 const (
 	pcStartPoint = 512
 )
 
-var keybState []uint8
 var SetXtoYInShiftInstruction = true
-var kp = input.GetKeys()
+
+var keypad = input.GetKeyPad()
 
 var (
 	Font = []byte{0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -68,21 +70,33 @@ func (mem *EmuMemory) init() {
 
 func (e *EmuMemory) RunEmu(filepath string) {
 
-	// e.Init()
+	e.init()
 	running := true
 	e.LoadRom(filepath)
+	go e.runDelayTimer()
 
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch event.(type) {
+			switch e := event.(type) {
 
 			case *sdl.QuitEvent:
 				running = false
+			case *sdl.KeyboardEvent:
+				if k, ok := keypad.ScanToKey[e.Keysym.Scancode]; ok {
+					if e.State == sdl.PRESSED {
+						k.State = input.ON
+					} else {
+						k.State = input.OFF
+					}
+				} else if e.Keysym.Sym == sdl.K_ESCAPE {
+					running = false
+				}
 			}
 		}
 
 		opc := e.Fetch()
 		e.Decode(opc)
+		// time.Sleep(time.Microsecond * 16666)
 		// bufio.NewReader(os.Stdin).ReadString('\n')
 	}
 }
@@ -129,7 +143,7 @@ func (mem *EmuMemory) decrementPc() {
 
 // decode the various opcodes and execute
 func (mem *EmuMemory) Decode(opcode opCode) {
-
+	fmt.Printf("The Program Counter is: %d\n", mem.programCounter)
 	// nib2 := op1 & 0x0F
 	switch opcode.opval {
 	case 0x00:
@@ -255,21 +269,21 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		spriteData := mem.Memory[mem.indexRegister : mem.indexRegister+uint16(opcode.nib4)]
 		fmt.Printf("The sprite data is %d in length\n", len(spriteData))
 		mem.drawDisplay(x, y, spriteData)
-
+		time.Sleep(time.Microsecond * 33332)
 		//display/draw
 	case 0xe:
 		fmt.Println("14")
 		//skip instruction if key is/ is not pressed
-		keybState = sdl.GetKeyboardState()
-		isPressed := keybState[kp[mem.varRegister[opcode.nib2]]]
+
+		key := keypad.ScanToKey[keypad.ValToScan[opcode.nib2]]
 
 		switch opcode.twoVal {
 		case 0x9e:
-			if isPressed == 1 {
+			if key.State {
 				mem.incrementPc()
 			}
 		case 0xa1:
-			if isPressed == 0 {
+			if !key.State {
 				mem.incrementPc()
 			}
 
@@ -281,12 +295,12 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		switch opcode.twoVal {
 		case 0x07:
 			//sets VX to the current value of the delay timer
-			mem.varRegister[opcode.nib2] = mem.delayTimer
+			mem.varRegister[opcode.nib2] = uint8(mem.delayTimer)
 		case 0x15:
 			//sets the delay timer to the value in VX
-			mem.delayTimer = mem.varRegister[opcode.nib2]
+			mem.delayTimer.setTimer(mem.varRegister[opcode.nib2])
 		case 0x18:
-			mem.soundTimer = mem.varRegister[opcode.nib2]
+			mem.soundTimer.setTimer(mem.varRegister[opcode.nib2])
 		case 0x33:
 			num := mem.varRegister[opcode.nib2]
 			mem.storeDigits(num)
@@ -308,12 +322,25 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 				mem.varRegister[0xf] = 1
 			}
 		case 0x0a:
-
+			keyIsPressed := false
+			var keyval byte
+			for _, v := range keypad.ScanToKey {
+				if v.State {
+					keyIsPressed = bool(v.State)
+					keyval = v.Value
+				}
+			}
+			if !keyIsPressed {
+				mem.decrementPc()
+			} else {
+				mem.varRegister[opcode.nib2] = keyval
+			}
 		}
 
 	default:
 		fmt.Println("oopsie poopsie, decode didn't work")
 	}
+
 }
 
 func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
@@ -360,16 +387,35 @@ func (mem *EmuMemory) printDisplay() {
 
 }
 
-func (mem *EmuMemory) Decrement() {
-	for mem.delayTimer > 0 {
+func (t timer) Decrement() {
+	if t > 0 {
+		t--
 		time.Sleep(time.Microsecond * 16666)
-		mem.delayTimer--
-		fmt.Printf("delay timer is now %d \n", mem.delayTimer)
+		fmt.Printf("delay timer is now %d \n", t)
 	}
 }
 
 func (mem *EmuMemory) SetDelayTimer(time uint8) {
-	mem.delayTimer = time
+	mem.delayTimer = timer(time)
+}
+func (t timer) setTimer(time uint8) {
+	t = timer(time)
+}
+
+func (mem *EmuMemory) runDelayTimer() {
+	for {
+		for mem.delayTimer > 0 {
+			mem.delayTimer.Decrement()
+		}
+	}
+}
+
+func (mem *EmuMemory) runSoundTimer() {
+	for {
+		for mem.soundTimer > 0 {
+			mem.soundTimer.Decrement()
+		}
+	}
 }
 
 func (mem *EmuMemory) popStack() uint16 {

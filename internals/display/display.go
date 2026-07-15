@@ -28,11 +28,14 @@ func init() {
 }
 
 func DrawDisplay(pixels [32][64]bool) {
+	rend.SetDrawColor(0, 0, 0, 255)
+	rend.Clear()
+	rend.SetDrawColor(255, 255, 255, 255)
 	points := make([]sdl.Point, 0)
 	for y := 0; y < len(pixels); y++ {
 		for x := 0; x < len(pixels[0]); x++ {
 			if pixels[y][x] {
-				rend.SetDrawColor(255, 255, 255, 255)
+
 				xDraw := x * int(scale)
 				yDraw := y * int(scale)
 				for i := 0; i < int(scale); i++ {
@@ -55,11 +58,13 @@ func DrawDisplay(pixels [32][64]bool) {
 
 // brought this version back just to see if it rendered things any differently
 func DrawDisplaypoints(pixels [32][64]bool) {
+
 	//points := make([]sdl.Point, 0)
 	for y := 0; y < len(pixels); y++ {
 		for x := 0; x < len(pixels[0]); x++ {
 			if pixels[y][x] {
 				rend.SetDrawColor(255, 255, 255, 255)
+				rend.Clear()
 				xDraw := x * int(scale)
 				yDraw := y * int(scale)
 				for i := 0; i < int(scale); i++ {
