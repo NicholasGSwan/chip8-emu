@@ -11,16 +11,16 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-type EmuMemory struct {
+var (
 	Memory         [4096]byte
-	display        [32][64]bool
+	pixels         [32][64]bool
 	programCounter uint16
 	indexRegister  uint16
 	stack          []uint16
 	delayTimer     timer
 	soundTimer     timer
 	varRegister    [16]byte
-}
+)
 
 type opCode struct {
 	opval    byte
@@ -60,20 +60,20 @@ var (
 		0xF0, 0x80, 0xF0, 0x80, 0x80}
 )
 
-func (mem *EmuMemory) init() {
-	copy(mem.Memory[:], Font)
+func init() {
+	copy(Memory[:], Font)
 	//mem.stack = make([]uint16, 0)
-	mem.programCounter = pcStartPoint
+	programCounter = pcStartPoint
 	// display.init()
 
 }
 
-func (e *EmuMemory) RunEmu(filepath string) {
+func RunEmu(filepath string) {
 
-	e.init()
+	//init()
 	running := true
-	e.LoadRom(filepath)
-	go e.runDelayTimer()
+	LoadRom(filepath)
+	go runDelayTimer()
 
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -94,20 +94,20 @@ func (e *EmuMemory) RunEmu(filepath string) {
 			}
 		}
 
-		opc := e.Fetch()
-		e.Decode(opc)
+		opc := Fetch()
+		Decode(opc)
 		// time.Sleep(time.Microsecond * 16666)
 		// bufio.NewReader(os.Stdin).ReadString('\n')
 	}
 }
 
-func (mem *EmuMemory) LoadRom(filepath string) {
+func LoadRom(filepath string) {
 	file, err := os.Open(filepath)
 
 	if err != nil {
 		fmt.Printf("Could not open file: %s\n", err.Error())
 	} else {
-		numBytes, err := file.Read(mem.Memory[512:])
+		numBytes, err := file.Read(Memory[512:])
 		if err != nil {
 			fmt.Printf("Could not load rom into memory: %s\n", err.Error())
 		}
@@ -117,9 +117,9 @@ func (mem *EmuMemory) LoadRom(filepath string) {
 	fmt.Println("Rom loaded!")
 }
 
-func (mem *EmuMemory) FetchAt(memAddr uint16) opCode {
-	op1 := mem.Memory[memAddr]
-	op2 := mem.Memory[memAddr+1]
+func FetchAt(memAddr uint16) opCode {
+	op1 := Memory[memAddr]
+	op2 := Memory[memAddr+1]
 
 	opcode := opCode{op1 & 0xF0 >> 4, op1 & 0x0F, op2 & 0xF0 >> 4, op2 & 0x0F, (uint16(op1)&0x000F)<<8 + uint16(op2), op2}
 	//mem.programCounter = mem.programCounter + 2
@@ -127,23 +127,23 @@ func (mem *EmuMemory) FetchAt(memAddr uint16) opCode {
 }
 
 // Fetches the opcode at the PC, then increments it to the next position
-func (mem *EmuMemory) Fetch() opCode {
-	opcode := mem.FetchAt(mem.programCounter)
-	mem.incrementPc()
+func Fetch() opCode {
+	opcode := FetchAt(programCounter)
+	incrementPc()
 	return opcode
 }
 
-func (mem *EmuMemory) incrementPc() {
-	mem.programCounter += 2
+func incrementPc() {
+	programCounter += 2
 }
 
-func (mem *EmuMemory) decrementPc() {
-	mem.programCounter -= 2
+func decrementPc() {
+	programCounter -= 2
 }
 
 // decode the various opcodes and execute
-func (mem *EmuMemory) Decode(opcode opCode) {
-	fmt.Printf("The Program Counter is: %d\n", mem.programCounter)
+func Decode(opcode opCode) {
+	fmt.Printf("The Program Counter is: %d\n", programCounter)
 	// nib2 := op1 & 0x0F
 	switch opcode.opval {
 	case 0x00:
@@ -152,7 +152,7 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 			//clear screen
 			fmt.Println("clearing screen")
 		case 0xEE:
-			mem.programCounter = mem.popStack()
+			programCounter = popStack()
 			//mem.incrementPc()
 		}
 
@@ -163,113 +163,114 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		// if mem.programCounter-2 == opcode.threeVal {
 		// 	os.Exit(0)
 		// }
-		mem.programCounter = opcode.threeVal
+		programCounter = opcode.threeVal
 
 		//fmt.Println("1")
 	case 0x2:
 
-		mem.stack = append(mem.stack, mem.programCounter)
-		mem.programCounter = opcode.threeVal
+		stack = append(stack, programCounter)
+		programCounter = opcode.threeVal
 		fmt.Println("2")
 
 	case 0x3:
 		fmt.Println("3")
 		//skip if variable register at nib2 equals twoval
-		if mem.varRegister[opcode.nib2] == opcode.twoVal {
-			mem.incrementPc()
+		if varRegister[opcode.nib2] == opcode.twoVal {
+			incrementPc()
 		}
 
 	case 0x4:
 		fmt.Println("4")
-		if mem.varRegister[opcode.nib2] != opcode.twoVal {
-			mem.incrementPc()
+		if varRegister[opcode.nib2] != opcode.twoVal {
+			incrementPc()
 		}
 	case 0x5:
 		fmt.Println("5")
-		if mem.varRegister[opcode.nib2] == mem.varRegister[opcode.nib3] {
-			mem.incrementPc()
+		if varRegister[opcode.nib2] == varRegister[opcode.nib3] {
+			incrementPc()
 		}
 	case 0x6:
 		fmt.Println("6")
 		//set variable register at nib2 addr
-		mem.varRegister[opcode.nib2] = opcode.twoVal
+		varRegister[opcode.nib2] = opcode.twoVal
 	case 0x7:
 		fmt.Println("7")
 		//add value to variable register at nib2
-		mem.varRegister[opcode.nib2] += opcode.twoVal
+		varRegister[opcode.nib2] += opcode.twoVal
 	case 0x8:
 		fmt.Println("8")
 		switch opcode.nib4 {
 		case 0:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib3]
 		case 1:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] | mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] | varRegister[opcode.nib3]
 		case 2:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] & mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] & varRegister[opcode.nib3]
 		case 3:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] ^ mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] ^ varRegister[opcode.nib3]
 		case 4:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] + mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] + varRegister[opcode.nib3]
 		case 5:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] - mem.varRegister[opcode.nib3]
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] - varRegister[opcode.nib3]
 		case 6:
 			//shift bit right and put in VF
 			if SetXtoYInShiftInstruction {
-				mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3]
+				varRegister[opcode.nib2] = varRegister[opcode.nib3]
 			}
 
-			if bit := 0x1 & mem.varRegister[opcode.nib2]; bit == 0x1 {
-				mem.varRegister[0xF] = 1
+			if bit := 0x1 & varRegister[opcode.nib2]; bit == 0x1 {
+				varRegister[0xF] = 1
 			} else {
-				mem.varRegister[0xF] = 0
+				varRegister[0xF] = 0
 			}
 
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] >> 1
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] >> 1
 		case 7:
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3] - mem.varRegister[opcode.nib2]
+			varRegister[opcode.nib2] = varRegister[opcode.nib3] - varRegister[opcode.nib2]
 		case 0xE:
 			//shift bit left and put in VF
 			if SetXtoYInShiftInstruction {
-				mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib3]
+				varRegister[opcode.nib2] = varRegister[opcode.nib3]
 			}
 
-			if bit := 0x8 & mem.varRegister[opcode.nib2]; bit == 0x8 {
-				mem.varRegister[0xF] = 1
+			if bit := 0x8 & varRegister[opcode.nib2]; bit == 0x8 {
+				varRegister[0xF] = 1
 			} else {
-				mem.varRegister[0xF] = 0
+				varRegister[0xF] = 0
 			}
 
-			mem.varRegister[opcode.nib2] = mem.varRegister[opcode.nib2] << 1
+			varRegister[opcode.nib2] = varRegister[opcode.nib2] << 1
 		}
 	case 0x9:
 		fmt.Println("9")
-		if mem.varRegister[opcode.nib2] != mem.varRegister[opcode.nib3] {
-			mem.incrementPc()
+		if varRegister[opcode.nib2] != varRegister[opcode.nib3] {
+			incrementPc()
 		}
 	case 0xA:
 		fmt.Println("10")
 		//set index register
 		//fmt.Printf("setting index register to %d\n", opcode.threeVal)
-		mem.indexRegister = opcode.threeVal
+		indexRegister = opcode.threeVal
 	case 0xB:
 		fmt.Println("11")
 		//jump with offset.  Has ambiguous behavior; implementing original functionality (BNNN vs BXNN)
-		mem.programCounter = uint16(mem.varRegister[0]) + opcode.threeVal
+		programCounter = uint16(varRegister[0]) + opcode.threeVal
 	case 0xc:
 		fmt.Println("12")
 		//Random
-		mem.varRegister[opcode.nib2] = byte(rand.Int()) & opcode.twoVal
+		varRegister[opcode.nib2] = byte(rand.Int()) & opcode.twoVal
 	case 0xd:
 		fmt.Println("13")
 		// bitwise AND behaves the same as modulo for powers of 2 apparently
-		x := mem.varRegister[opcode.nib2] & 63
-		y := mem.varRegister[opcode.nib3] & 31
+		x := varRegister[opcode.nib2] & 63
+		y := varRegister[opcode.nib3] & 31
 		fmt.Printf("x is : %d and y is : %d\n", x, y)
-		fmt.Printf("start is : %d and end is : %d\n", mem.indexRegister, mem.indexRegister+uint16(opcode.nib4))
-		spriteData := mem.Memory[mem.indexRegister : mem.indexRegister+uint16(opcode.nib4)]
+		fmt.Printf("start is : %d and end is : %d\n", indexRegister, indexRegister+uint16(opcode.nib4))
+		spriteData := Memory[indexRegister : indexRegister+uint16(opcode.nib4)]
 		fmt.Printf("The sprite data is %d in length\n", len(spriteData))
-		mem.drawDisplay(x, y, spriteData)
-		time.Sleep(time.Microsecond * 33332)
+		drawDisplay(x, y, spriteData)
+		time.Sleep(time.Microsecond * 66664)
+		// time.Sleep(time.Millisecond * 332)
 		//display/draw
 	case 0xe:
 		fmt.Println("14")
@@ -280,11 +281,11 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		switch opcode.twoVal {
 		case 0x9e:
 			if key.State {
-				mem.incrementPc()
+				incrementPc()
 			}
 		case 0xa1:
 			if !key.State {
-				mem.incrementPc()
+				incrementPc()
 			}
 
 		}
@@ -295,31 +296,31 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 		switch opcode.twoVal {
 		case 0x07:
 			//sets VX to the current value of the delay timer
-			mem.varRegister[opcode.nib2] = uint8(mem.delayTimer)
+			varRegister[opcode.nib2] = uint8(delayTimer)
 		case 0x15:
 			//sets the delay timer to the value in VX
-			mem.delayTimer.setTimer(mem.varRegister[opcode.nib2])
+			delayTimer.setTimer(varRegister[opcode.nib2])
 		case 0x18:
-			mem.soundTimer.setTimer(mem.varRegister[opcode.nib2])
+			soundTimer.setTimer(varRegister[opcode.nib2])
 		case 0x33:
-			num := mem.varRegister[opcode.nib2]
-			mem.storeDigits(num)
+			num := varRegister[opcode.nib2]
+			storeDigits(num)
 			//mem.getDigits()
 		case 0x55:
 			for i := 0; i <= int(opcode.nib2); i++ {
-				mem.Memory[mem.indexRegister+uint16(i)] = mem.varRegister[i]
+				Memory[indexRegister+uint16(i)] = varRegister[i]
 			}
 		case 0x65:
 			for i := 0; i <= int(opcode.nib2); i++ {
-				mem.varRegister[i] = mem.Memory[mem.indexRegister+uint16(i)]
+				varRegister[i] = Memory[indexRegister+uint16(i)]
 			}
 
 		case 0x1e:
 			//The index register I will get the value in VX added to it.
-			tmp := mem.indexRegister
-			mem.indexRegister += uint16(mem.varRegister[opcode.nib2])
-			if mem.indexRegister < tmp {
-				mem.varRegister[0xf] = 1
+			tmp := indexRegister
+			indexRegister += uint16(varRegister[opcode.nib2])
+			if indexRegister < tmp {
+				varRegister[0xf] = 1
 			}
 		case 0x0a:
 			keyIsPressed := false
@@ -331,9 +332,9 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 				}
 			}
 			if !keyIsPressed {
-				mem.decrementPc()
+				decrementPc()
 			} else {
-				mem.varRegister[opcode.nib2] = keyval
+				varRegister[opcode.nib2] = keyval
 			}
 		}
 
@@ -343,8 +344,8 @@ func (mem *EmuMemory) Decode(opcode opCode) {
 
 }
 
-func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
-	mem.varRegister[0xf] = 0
+func drawDisplay(x, y byte, spriteData []byte) {
+	varRegister[0xf] = 0
 
 	for i := 0; i < len(spriteData) && int(y)+i < 32; i++ {
 		bRow := spriteData[i]
@@ -352,27 +353,27 @@ func (mem *EmuMemory) drawDisplay(x, y byte, spriteData []byte) {
 		bs := 7
 		for xb < 64 && xb < x+8 {
 			if (bRow & (1 << bs)) != 0 {
-				if mem.display[int(y)+i][xb] {
-					mem.display[int(y)+i][xb] = false
-					mem.varRegister[0xf] = 1
+				if pixels[int(y)+i][xb] {
+					pixels[int(y)+i][xb] = false
+					varRegister[0xf] = 1
 				} else {
-					mem.display[int(y)+i][xb] = true
+					pixels[int(y)+i][xb] = true
 				}
 			}
 			bs--
 			xb++
 		}
 	}
-	display.DrawDisplay(mem.display)
+	display.DrawDisplay(pixels)
 	// mem.printDisplay()
 }
 
 // original way I was simulating the display rendering before implementing sdl2
-func (mem *EmuMemory) printDisplay() {
-	display.DrawDisplay(mem.display)
-	for y := 0; y < len(mem.display); y++ {
-		for x := 0; x < len(mem.display[0]); x++ {
-			if mem.display[y][x] {
+func printDisplay() {
+	display.DrawDisplay(pixels)
+	for y := 0; y < len(pixels); y++ {
+		for x := 0; x < len(pixels[0]); x++ {
+			if pixels[y][x] {
 
 				fmt.Print("11")
 
@@ -395,33 +396,33 @@ func (t timer) Decrement() {
 	}
 }
 
-func (mem *EmuMemory) SetDelayTimer(time uint8) {
-	mem.delayTimer = timer(time)
+func SetDelayTimer(time uint8) {
+	delayTimer = timer(time)
 }
 func (t timer) setTimer(time uint8) {
 	t = timer(time)
 }
 
-func (mem *EmuMemory) runDelayTimer() {
+func runDelayTimer() {
 	for {
-		for mem.delayTimer > 0 {
-			mem.delayTimer.Decrement()
+		for delayTimer > 0 {
+			delayTimer.Decrement()
 		}
 	}
 }
 
-func (mem *EmuMemory) runSoundTimer() {
+func runSoundTimer() {
 	for {
-		for mem.soundTimer > 0 {
-			mem.soundTimer.Decrement()
+		for soundTimer > 0 {
+			soundTimer.Decrement()
 		}
 	}
 }
 
-func (mem *EmuMemory) popStack() uint16 {
+func popStack() uint16 {
 
-	retVal := mem.stack[len(mem.stack)-1]
-	mem.stack = mem.stack[:len(mem.stack)-1]
+	retVal := stack[len(stack)-1]
+	stack = stack[:len(stack)-1]
 	return retVal
 }
 
@@ -433,25 +434,25 @@ func PrintOpCode(opcode opCode) {
 	fmt.Printf("Opcode vals are:\n opval: %x\nnib2: %x\nnib3: %x\nnib4: %x\nthreeVal: %x\ntwoVal: %x\n", opcode.opval, opcode.nib2, opcode.nib3, opcode.nib4, opcode.threeVal, opcode.twoVal)
 }
 
-func (mem EmuMemory) PrintPcCounter() {
-	fmt.Printf("Program Counter is at: %d\n", mem.programCounter)
+func PrintPcCounter() {
+	fmt.Printf("Program Counter is at: %d\n", programCounter)
 }
 
-func (mem *EmuMemory) storeDigits(num byte) {
-	ir := mem.indexRegister + 2
+func storeDigits(num byte) {
+	ir := indexRegister + 2
 	fmt.Printf("preparing to store %d into memory\n", num)
 
 	for i := 0; i < 3; i++ {
 		fmt.Printf("Putting %d into memory addr %d\n", num%10, ir)
-		mem.Memory[ir] = num % 10
+		Memory[ir] = num % 10
 		ir--
 		num = num / 10
 	}
 }
-func (mem *EmuMemory) getDigits() {
+func getDigits() {
 	fmt.Print("The digits just stored are ")
 	for i := 0; i < 3; i++ {
-		fmt.Printf("%d", mem.Memory[mem.indexRegister+uint16(i)])
+		fmt.Printf("%d", Memory[indexRegister+uint16(i)])
 	}
 	fmt.Print("\n")
 }

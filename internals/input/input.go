@@ -2,8 +2,6 @@ package input
 
 import "github.com/veandco/go-sdl2/sdl"
 
-type KeyPress map[byte]int
-
 type KeyState bool
 
 const (
